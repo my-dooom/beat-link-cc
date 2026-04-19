@@ -48,43 +48,7 @@ public class BeatLinkGrpcServer {
             }
         }
 
-        // ── Start DJ Link components ──────────────────────────────────────────
-        logger.info("Starting DJ Link components...");
-
-        try {
-            DeviceFinder.getInstance().start();
-            logger.info("DeviceFinder started – listening for device announcements on port 50000");
-        } catch (java.net.SocketException e) {
-            logger.error("Failed to start DeviceFinder", e);
-            System.exit(1);
-        }
-
-        try {
-            boolean started = VirtualCdj.getInstance().start();
-            if (started) {
-                logger.info("VirtualCdj started – receiving player status updates on port 50002");
-            } else {
-                logger.warn("VirtualCdj could not find a free device number; status updates may be unavailable");
-            }
-        } catch (Exception e) {
-            logger.warn("VirtualCdj could not start (no status updates will be available): {}", e.getMessage());
-        }
-
-        try {
-            BeatFinder.getInstance().start();
-            logger.info("BeatFinder started – listening for beat packets on port 50001");
-        } catch (java.net.SocketException e) {
-            logger.warn("BeatFinder could not start (no beat events will be available): {}", e.getMessage());
-        }
-
-        try {
-            MetadataFinder.getInstance().start();
-            logger.info("MetadataFinder started – track metadata queries are available");
-        } catch (Exception e) {
-            logger.warn("MetadataFinder could not start (no metadata will be available): {}", e.getMessage());
-        }
-
-        // ── Start gRPC server ─────────────────────────────────────────────────
+        // ── Start gRPC server first so clients can connect immediately ────────
         Server server = ServerBuilder.forPort(port)
                 .addService(new DeviceServiceImpl())
                 .addService(new BeatServiceImpl())
@@ -94,6 +58,46 @@ public class BeatLinkGrpcServer {
                 .start();
 
         logger.info("beat-link gRPC server listening on port {}", port);
+
+        // ── Start DJ Link components in background ────────────────────────────
+        Thread djLinkInit = new Thread(() -> {
+            logger.info("Starting DJ Link components...");
+
+            try {
+                DeviceFinder.getInstance().start();
+                logger.info("DeviceFinder started – listening for device announcements on port 50000");
+            } catch (java.net.SocketException e) {
+                logger.error("Failed to start DeviceFinder", e);
+                return;
+            }
+
+            try {
+                boolean started = VirtualCdj.getInstance().start();
+                if (started) {
+                    logger.info("VirtualCdj started – receiving player status updates on port 50002");
+                } else {
+                    logger.warn("VirtualCdj could not find a free device number; status updates may be unavailable");
+                }
+            } catch (Exception e) {
+                logger.warn("VirtualCdj could not start (no status updates will be available): {}", e.getMessage());
+            }
+
+            try {
+                BeatFinder.getInstance().start();
+                logger.info("BeatFinder started – listening for beat packets on port 50001");
+            } catch (java.net.SocketException e) {
+                logger.warn("BeatFinder could not start (no beat events will be available): {}", e.getMessage());
+            }
+
+            try {
+                MetadataFinder.getInstance().start();
+                logger.info("MetadataFinder started – track metadata queries are available");
+            } catch (Exception e) {
+                logger.warn("MetadataFinder could not start (no metadata will be available): {}", e.getMessage());
+            }
+        }, "djlink-init");
+        djLinkInit.setDaemon(true);
+        djLinkInit.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("Shutting down beat-link gRPC server...");

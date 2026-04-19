@@ -31,6 +31,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Protobuf runtime matching protoc version used for code generation -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobufVersion}</version>
+        </dependency>
+
         <!-- gRPC runtime -->
         <dependency>
             <groupId>io.grpc</groupId>
