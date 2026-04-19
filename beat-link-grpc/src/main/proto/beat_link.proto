@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package beatlink;
+
+option java_multiple_files = true;
+option java_package = "org.deepsymmetry.beatlink.grpc";
+option java_outer_classname = "BeatLinkProto";
+
+// ─── Shared message types ────────────────────────────────────────────────────
+
+// A Pioneer DJ Link device visible on the network.
+message DeviceInfo {
+  // Human-readable device name (e.g. "CDJ-3000").
+  string name = 1;
+  // DJ Link device number (1–4 for players, 33+ for mixers).
+  int32 number = 2;
+  // IPv4 address as a dotted-decimal string.
+  string address = 3;
+  // Millisecond epoch timestamp of the last announcement.
+  int64 timestamp_ms = 4;
+  // True when the device is an Opus Quad.
+  bool is_opus_quad = 5;
+  // True when the device is an XDJ-AZ.
+  bool is_xdj_az = 6;
+  // Number of peer devices this device currently sees (including itself).
+  int32 peer_count = 7;
+}
+
+// A beat event broadcast by a player or mixer.
+message BeatEvent {
+  // DJ Link device number of the sender.
+  int32 device_number = 1;
+  // Human-readable device name.
+  string device_name = 2;
+  // Source IPv4 address as a dotted-decimal string.
+  string address = 3;
+  // Nanosecond timestamp at which this packet was received.
+  int64 timestamp_ns = 4;
+  // Raw pitch value (0–2 097 152; 1 048 576 = 0 %).
+  int32 pitch = 5;
+  // Track BPM × 100 (e.g. 12 050 = 120.50 BPM).
+  int32 bpm = 6;
+  // Actual playback BPM after applying pitch.
+  double effective_bpm = 7;
+  // Beat position within the bar (1–4, where 1 = downbeat).
+  int32 beat_within_bar = 8;
+  // True when beat_within_bar is musically meaningful.
+  bool beat_within_bar_meaningful = 9;
+  // True when this device is the current tempo master.
+  bool is_tempo_master = 10;
+  // True when this device is synced to the tempo master.
+  bool is_synced = 11;
+  // Milliseconds until the next beat (at normal speed); 0xFFFFFFFF if past end of track.
+  int64 next_beat_ms = 12;
+  // Milliseconds until the second upcoming beat (at normal speed).
+  int64 second_beat_ms = 13;
+  // Milliseconds until the next bar / downbeat (at normal speed).
+  int64 next_bar_ms = 14;
+  // Milliseconds until the fourth upcoming beat (at normal speed).
+  int64 fourth_beat_ms = 15;
+  // Milliseconds until the second upcoming bar (at normal speed).
+  int64 second_bar_ms = 16;
+  // Milliseconds until the eighth upcoming beat (at normal speed).
+  int64 eighth_beat_ms = 17;
+}
+
+// A detailed CDJ status update.
+message PlayerStatus {
+  // DJ Link device number.
+  int32 device_number = 1;
+  // Human-readable device name.
+  string device_name = 2;
+  // Source IPv4 address as a dotted-decimal string.
+  string address = 3;
+  // Nanosecond timestamp at which this packet was received.
+  int64 timestamp_ns = 4;
+  // Raw pitch value (0–2 097 152).
+  int32 pitch = 5;
+  // Track BPM × 100.
+  int32 bpm = 6;
+  // Actual playback BPM after applying pitch.
+  double effective_bpm = 7;
+  // True when the player is actively playing.
+  bool is_playing = 8;
+  // True when the player is in Sync mode.
+  bool is_synced = 9;
+  // True when this device is the current tempo master.
+  bool is_tempo_master = 10;
+  // True when the channel fader is open (Nexus mixers only).
+  bool is_on_air = 11;
+  // Beat position within the bar (1–4, or 0 if unavailable).
+  int32 beat_within_bar = 12;
+  // Rekordbox track ID of the currently loaded track (0 = no track).
+  int32 rekordbox_id = 13;
+  // Device number of the player that is the source of the loaded track.
+  int32 track_source_player = 14;
+  // Media slot from which the track was loaded (e.g. "USB_SLOT").
+  string track_source_slot = 15;
+  // Type of track loaded (e.g. "REKORDBOX", "NO_TRACK").
+  string track_type = 16;
+  // Primary play-state label (e.g. "PLAYING", "PAUSED", "NO_TRACK").
+  string play_state = 17;
+  // True when this is an Opus Quad device.
+  bool is_from_opus_quad = 18;
+  // True when this is a pre-Nexus CDJ.
+  bool is_pre_nexus = 19;
+}
+
+// Track metadata fetched from a player's rekordbox database.
+message TrackMetadata {
+  // Track title.
+  string title = 1;
+  // Primary artist name, or empty.
+  string artist = 2;
+  // Album name, or empty.
+  string album = 3;
+  // Musical genre, or empty.
+  string genre = 4;
+  // Musical key, or empty.
+  string key = 5;
+  // Record label, or empty.
+  string label = 6;
+  // DJ comment, or empty.
+  string comment = 7;
+  // Track duration in seconds.
+  int32 duration_secs = 8;
+  // Tempo in BPM × 100.
+  int32 tempo = 9;
+  // Star rating (0–5).
+  int32 rating = 10;
+  // Release year (0 if unknown).
+  int32 year = 11;
+  // Bit-rate in kbps (0 if unknown).
+  int32 bit_rate_kbps = 12;
+  // Date the track was added to the collection, or empty.
+  string date_added = 13;
+  // Track type (e.g. "REKORDBOX").
+  string track_type = 14;
+  // Artwork ID (0 = no artwork).
+  int32 artwork_id = 15;
+}
+
+// A single cue / hot-cue / loop entry.
+message CueEntry {
+  // Hot cue letter (A–Z), or 0 if this is an ordinary memory point or loop.
+  int32 hot_cue_number = 1;
+  // Time offset of the cue in milliseconds.
+  int32 position_ms = 2;
+  // True when this is a loop.
+  bool is_loop = 3;
+  // Loop end time in milliseconds (only meaningful when is_loop is true).
+  int32 loop_end_ms = 4;
+  // Human-readable comment for this cue, if any.
+  string comment = 5;
+  // ARGB colour assigned to this cue (0 = none).
+  int32 color_argb = 6;
+}
+
+// ─── Request / response wrapper types ────────────────────────────────────────
+
+// Empty request used by streaming RPCs that need no parameters.
+message StreamRequest {}
+
+// Request to list the devices currently known to DeviceFinder.
+message ListDevicesRequest {}
+
+// Response to ListDevices.
+message ListDevicesResponse {
+  repeated DeviceInfo devices = 1;
+}
+
+// Request track metadata for a specific track.
+message GetMetadataRequest {
+  // Device number of the player that hosts the track.
+  int32 source_player = 1;
+  // Media slot: USB_SLOT, SD_SLOT, CD_SLOT, or COLLECTION.
+  string source_slot = 2;
+  // Rekordbox track ID.
+  int32 rekordbox_id = 3;
+}
+
+// Request the cue list for a specific track.
+message GetCueListRequest {
+  // Device number of the player that hosts the track.
+  int32 source_player = 1;
+  // Media slot: USB_SLOT, SD_SLOT, CD_SLOT, or COLLECTION.
+  string source_slot = 2;
+  // Rekordbox track ID.
+  int32 rekordbox_id = 3;
+}
+
+// Response containing the cue list for a track.
+message GetCueListResponse {
+  repeated CueEntry entries = 1;
+}
+
+// ─── Services ─────────────────────────────────────────────────────────────────
+
+// Manages discovery of Pioneer DJ Link devices on the network.
+service DeviceService {
+  // Returns all currently known devices (snapshot, not streaming).
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  // Streams device-announcement events in real time.
+  // Each message represents a device that has just announced itself.
+  rpc StreamDeviceAnnouncements(StreamRequest) returns (stream DeviceInfo);
+}
+
+// Provides a real-time stream of beat events from all players.
+service BeatService {
+  // Streams beat events as they are received from the network.
+  rpc StreamBeats(StreamRequest) returns (stream BeatEvent);
+}
+
+// Provides a real-time stream of detailed CDJ status updates.
+service PlayerStatusService {
+  // Streams CDJ status updates as they are received.
+  rpc StreamPlayerStatus(StreamRequest) returns (stream PlayerStatus);
+}
+
+// Fetches track metadata from players via the rekordbox db-server protocol.
+service MetadataService {
+  // Retrieves rekordbox metadata for a specific track.
+  rpc GetTrackMetadata(GetMetadataRequest) returns (TrackMetadata);
+  // Retrieves the cue / hot-cue / loop list for a specific track.
+  rpc GetCueList(GetCueListRequest) returns (GetCueListResponse);
+}
