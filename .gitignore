@@ -9,3 +9,7 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 .idea/
+
+# C++ build artifacts
+cpp/build/
+cpp/example/build/
